@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stack Sprinkles — Polyglot Environment Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg: #FDF6FF; --bg-2: #F7F1FF; --card: #FFFFFF;
+    --ink: #3A2E4D; --muted: #8B7FA8; --muted-2: #B6ACD1; --line: #ECE1FB;
+    --pink: #FF6FA0;  --pink-soft: #FFE3ED;
+    --mint: #2BBFA0;  --mint-soft: #DDF7F0;
+    --sun: #F5A623;   --sun-soft: #FFF1D6;
+    --lav: #8C6BFB;   --lav-soft: #EDE7FF;
+    --sky: #35A7E8;   --sky-soft: #DFF1FE;
+    --peach:#FF8C61;  --peach-soft:#FFE6DA;
+    --rose: #E85D8A;  --rose-soft:#FCE1EB;
+    --font-head: 'Baloo 2', 'Nunito', sans-serif;
+    --font-body: 'Nunito', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius: 22px; --radius-sm: 14px;
+    --shadow: 0 10px 26px rgba(140, 107, 251, 0.14);
+    --shadow-sm: 0 4px 12px rgba(140, 107, 251, 0.10);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(circle at 8% 12%, var(--pink-soft) 0, transparent 42%),
+      radial-gradient(circle at 92% 8%, var(--sky-soft) 0, transparent 40%),
+      radial-gradient(circle at 85% 92%, var(--mint-soft) 0, transparent 42%),
+      radial-gradient(circle at 20% 90%, var(--sun-soft) 0, transparent 38%),
+      var(--bg);
+    color: var(--ink); font-family: var(--font-body);
+    min-height: 100vh; padding: 32px 18px 70px;
+  }
+  .page{ max-width: 1220px; margin: 0 auto; }
+
+  .banner{
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 28px 30px; display:flex; flex-wrap: wrap; gap: 22px;
+    align-items:center; justify-content: space-between; position: relative; overflow: hidden; margin-bottom: 20px;
+  }
+  .banner::before{ content:""; position:absolute; top:-40px; right:-40px; width:160px; height:160px; border-radius:50%; background: var(--pink-soft); z-index:0; }
+  .banner::after{ content:""; position:absolute; bottom:-50px; left:40%; width:120px; height:120px; border-radius:50%; background: var(--sun-soft); z-index:0; }
+  .banner-text{ position:relative; z-index:1; max-width: 520px; }
+  .kicker{ display:inline-block; font-family: var(--font-mono); font-size: 12px; color: var(--lav); background: var(--lav-soft); padding: 4px 12px; border-radius: 999px; margin-bottom: 10px; }
+  .banner h1{ font-family: var(--font-head); font-size: 28px; font-weight: 700; margin: 0 0 8px; line-height: 1.15; }
+  .banner p{ margin:0; color: var(--muted); font-size: 14.5px; }
+  .name-field{ position:relative; z-index:1; background: var(--bg-2); border-radius: var(--radius-sm); padding: 14px 18px; min-width: 260px; border: 2px dashed var(--muted-2); }
+  .name-field label{ display:block; font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .name-field input{ width: 100%; background: transparent; border: none; font-family: var(--font-head); font-size: 19px; font-weight: 600; color: var(--ink); outline: none; }
+  .name-field input::placeholder{ color: var(--muted-2); }
+  .vscode-note{ position:relative; z-index:1; font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px; background:var(--mint-soft); color:var(--mint); padding:6px 12px; border-radius:999px; font-family:var(--font-mono); }
+
+  .layout{ display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 940px){ .layout{ grid-template-columns: 1fr; } }
+
+  .modules{ display:flex; flex-direction:column; gap: 14px; }
+  .module{ background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 18px 20px; border-top: 5px solid var(--accent, var(--pink)); }
+  .module-head{ display:flex; align-items:center; gap: 10px; margin-bottom: 4px; }
+  .module-icon{ width: 28px; height: 28px; border-radius: 9px; display:flex; align-items:center; justify-content:center; font-size: 14px; background: var(--accent-soft, var(--pink-soft)); flex-shrink:0; }
+  .module-title{ font-family: var(--font-head); font-weight: 700; font-size: 15px; }
+  .module-hint{ color: var(--muted); font-size: 12px; margin: 2px 0 10px 38px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:7px; margin-left: 38px; }
+  .chip{
+    font-family: var(--font-mono); font-size: 12px; padding: 6px 12px; border-radius: 999px;
+    border: 2px solid var(--line); background: var(--bg-2); color: var(--muted);
+    cursor: pointer; user-select: none; transition: transform .1s ease, border-color .12s ease, background .12s ease, color .12s ease;
+    white-space: nowrap;
+  }
+  .chip:hover{ transform: translateY(-1px); border-color: var(--accent, var(--pink)); color: var(--ink); }
+  .chip.on{ border-color: var(--accent, var(--pink)); background: var(--accent, var(--pink)); color: #fff; font-weight: 600; }
+
+  .preview-stack{ display:flex; flex-direction:column; gap: 14px; position: sticky; top: 18px; }
+  .preview-card{ background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow:hidden; }
+  .preview-card-head{ display:flex; align-items:center; justify-content:space-between; padding: 14px 18px; border-bottom: 2px dashed var(--line); }
+  .preview-card-head .module-title{ font-size: 14px; }
+  .badge{ font-family: var(--font-mono); font-size: 11px; color: var(--mint); background: var(--mint-soft); padding: 4px 10px; border-radius: 999px; }
+  .tree{ font-family: var(--font-mono); font-size: 12px; line-height: 1.7; white-space: pre; padding: 14px 18px 18px; overflow-x: auto; max-height: 340px; overflow-y:auto; }
+  .tree .dim{ color: var(--muted-2); }
+  .tree .hi{ color: var(--lav); font-weight: 600; }
+
+  .cmd-head{ display:flex; align-items:center; justify-content:space-between; padding: 12px 18px; border-bottom: 2px dashed var(--line); }
+  .cmd-copy{ font-family: var(--font-mono); font-size: 11px; background: var(--sky-soft); color: var(--sky); border: none; padding: 5px 12px; border-radius: 999px; cursor:pointer; }
+  .cmd-copy:hover{ filter: brightness(0.96); }
+  .cmd-body{ font-family: var(--font-mono); font-size: 12px; line-height: 1.85; color: var(--mint); background: #0F2621; padding: 14px 18px; white-space: pre-wrap; word-break: break-word; max-height:260px; overflow-y:auto; }
+
+  .action-card{ padding: 18px; display:flex; flex-direction:column; gap: 9px; }
+  .action-note{ color: var(--muted); font-size: 12px; }
+  .btn{
+    font-family: var(--font-head); font-size: 14.5px; font-weight: 700;
+    background: linear-gradient(135deg, var(--pink), var(--lav)); color: #fff; border: none;
+    padding: 13px 18px; border-radius: 999px; cursor: pointer; box-shadow: 0 8px 18px rgba(255,111,160,0.35);
+    transition: transform .12s ease;
+  }
+  .btn:hover:not(:disabled){ transform: translateY(-2px); }
+  .btn:disabled{ background: var(--muted-2); box-shadow:none; cursor:default; }
+  .toast{ font-family: var(--font-mono); font-size: 11.5px; color: var(--mint); min-height: 15px; }
+  .toast.err{ color: #E8636B; }
+
+  .vscode-card{ padding:16px 18px; }
+  .vscode-card ol{ margin: 6px 0 0; padding-left: 18px; font-size:12.5px; color: var(--muted); line-height:1.8; }
+  .vscode-card code{ background: var(--bg-2); padding:1px 6px; border-radius:6px; color: var(--ink); font-size:11.5px; }
+
+  ::selection{ background: var(--pink-soft); }
+  @media (prefers-reduced-motion: reduce){ *{ transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="banner">
+    <div class="banner-text">
+      <span class="kicker">✨ stack sprinkles — polyglot edition</span>
+      <h1>Project Environment Generator</h1>
+      <p>Pick any mix of languages and frameworks, watch real env files & setup commands build themselves, then download it all as a ZIP.</p>
+    </div>
+    <div class="name-field">
+      <label for="pname">PROJECT NAME</label>
+      <input id="pname" type="text" placeholder="Cloud Security Dashboard" value="Cloud Security Dashboard">
+    </div>
+    <span class="vscode-note">🧩 opens straight into VS Code</span>
+  </div>
+
+  <div class="layout">
+    <div class="modules">
+
+      <div class="module" style="--accent: var(--pink); --accent-soft: var(--pink-soft);">
+        <div class="module-head"><span class="module-icon">🎨</span><span class="module-title">Frontend</span></div>
+        <p class="module-hint">pick as many as you like</p>
+        <div class="chips" data-group="frontend">
+          <div class="chip" data-value="react">React</div>
+          <div class="chip" data-value="nextjs">Next.js</div>
+          <div class="chip" data-value="vue">Vue</div>
+          <div class="chip" data-value="svelte">Svelte</div>
+          <div class="chip" data-value="angular">Angular</div>
+          <div class="chip" data-value="solid">SolidJS</div>
+          <div class="chip" data-value="typescript">TypeScript</div>
+          <div class="chip" data-value="tailwind">Tailwind CSS</div>
+          <div class="chip" data-value="sass">Sass</div>
+        </div>
+      </div>
+
+      <div class="module" style="--accent: var(--mint); --accent-soft: var(--mint-soft);">
+        <div class="module-head"><span class="module-icon">🧩</span><span class="module-title">Backend languages</span></div>
+        <p class="module-hint">pick any combination — each gets its own folder + env file</p>
+        <div class="chips" data-group="backend">
+          <div class="chip" data-value="py-fastapi">🐍 Python · FastAPI</div>
+          <div class="chip" data-value="py-django">🐍 Python · Django</div>
+          <div class="chip" data-value="py-flask">🐍 Python · Flask</div>
+          <div class="chip" data-value="node-express">🟩 Node.js · Express</div>
+          <div class="chip" data-value="node-nest">🟩 Node.js · NestJS</div>
+          <div class="chip" data-value="go">🐹 Go</div>
+          <div class="chip" data-value="java-spring">☕ Java · Spring Boot</div>
+          <div class="chip" data-value="csharp-dotnet">🟣 C# · ASP.NET Core</div>
+          <div class="chip" data-value="php-laravel">🐘 PHP · Laravel</div>
+          <div class="chip" data-value="ruby-rails">💎 Ruby · Rails</div>
+          <div class="chip" data-value="rust-actix">🦀 Rust · Actix-web</div>
+          <div class="chip" data-value="kotlin-ktor">🎯 Kotlin · Ktor</div>
+        </div>
+      </div>
+
+      <div class="module" style="--accent: var(--sun); --accent-soft: var(--sun-soft);">
+        <div class="module-head"><span class="module-icon">🗄️</span><span class="module-title">Database</span></div>
+        <p class="module-hint">pick just one</p>
+        <div class="chips" data-group="database" data-mode="single">
+          <div class="chip" data-value="postgresql">PostgreSQL</div>
+          <div class="chip" data-value="mongodb">MongoDB</div>
+          <div class="chip" data-value="mysql">MySQL</div>
+          <div class="chip" data-value="sqlite">SQLite</div>
+          <div class="chip" data-value="firebase">Firebase</div>
+          <div class="chip" data-value="none">None</div>
+        </div>
+      </div>
+
+      <div class="module" style="--accent: var(--lav); --accent-soft: var(--lav-soft);">
+        <div class="module-head"><span class="module-icon">🧪</span><span class="module-title">Testing &amp; Quality</span></div>
+        <p class="module-hint">adds a test file for each matching language you picked above</p>
+        <div class="chips" data-group="quality">
+          <div class="chip" data-value="jest">Jest (Node)</div>
+          <div class="chip" data-value="vitest">Vitest (frontend)</div>
+          <div class="chip" data-value="pytest">Pytest (Python)</div>
+          <div class="chip" data-value="junit">JUnit 5 (Java)</div>
+          <div class="chip" data-value="xunit">xUnit (C#)</div>
+          <div class="chip" data-value="phpunit">PHPUnit (PHP)</div>
+          <div class="chip" data-value="rspec">RSpec (Ruby)</div>
+          <div class="chip" data-value="eslint-prettier">ESLint + Prettier</div>
+        </div>
+      </div>
+
+      <div class="module" style="--accent: var(--sky); --accent-soft: var(--sky-soft);">
+        <div class="module-head"><span class="module-icon">⚙️</span><span class="module-title">DevOps &amp; Tools</span></div>
+        <p class="module-hint">pick as many as you like</p>
+        <div class="chips" data-group="devops">
+          <div class="chip" data-value="docker">Docker</div>
+          <div class="chip" data-value="git">Git</div>
+          <div class="chip" data-value="redis">Redis</div>
+          <div class="chip" data-value="github-actions">GitHub Actions</div>
+          <div class="chip" data-value="vscode">VS Code workspace</div>
+        </div>
+      </div>
+
+      <div class="module" style="--accent: var(--peach); --accent-soft: var(--peach-soft);">
+        <div class="module-head"><span class="module-icon">📜</span><span class="module-title">License</span></div>
+        <p class="module-hint">pick just one</p>
+        <div class="chips" data-group="license" data-mode="single">
+          <div class="chip" data-value="mit">MIT</div>
+          <div class="chip" data-value="apache2">Apache 2.0</div>
+          <div class="chip" data-value="gpl3">GPL v3</div>
+          <div class="chip" data-value="none">None</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="preview-stack">
+
+      <div class="preview-card">
+        <div class="preview-card-head">
+          <span class="module-title">📁 Structure preview</span>
+          <span class="badge" id="fileCount">0 files</span>
+        </div>
+        <div class="tree" id="treeOut"></div>
+      </div>
+
+      <div class="preview-card">
+        <div class="cmd-head">
+          <span class="module-title">⌨️ Setup commands <span style="font-weight:400; color:var(--muted); font-size:11px;">(also saved as setup.sh)</span></span>
+          <button class="cmd-copy" id="copyCmds" type="button">copy</button>
+        </div>
+        <div class="cmd-body" id="cmdOut"></div>
+      </div>
+
+      <div class="preview-card action-card">
+        <p class="action-note" id="actionNote">Pick at least one thing from Frontend, Backend, or DevOps to build your ZIP.</p>
+        <button class="btn" id="downloadBtn">🎁 Generate &amp; Download ZIP</button>
+        <span class="toast" id="toast"></span>
+      </div>
+
+      <div class="preview-card vscode-card">
+        <span class="module-title">🧩 Run it in VS Code</span>
+        <ol>
+          <li>Unzip the download, then <code>code &lt;project-folder&gt;</code></li>
+          <li>Open the integrated terminal — <code>Ctrl/Cmd+`</code></li>
+          <li>Run <code>chmod +x setup.sh && ./setup.sh</code> (or paste the commands above one by one)</li>
+          <li>If a <code>.vscode-workspace</code> file was generated, double-click it to open every folder as one workspace</li>
+        </ol>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const state = {
+    frontend: new Set(),
+    backend: new Set(),
+    database: 'none',
+    quality: new Set(),
+    devops: new Set(),
+    license: 'none'
+  };
+
+  document.querySelectorAll('.chips').forEach(group => {
+    const key = group.dataset.group;
+    const mode = group.dataset.mode || 'multi';
+    group.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const val = chip.dataset.value;
+        if(mode === 'single'){
+          group.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+          chip.classList.add('on');
+          state[key] = val;
+        } else {
+          chip.classList.toggle('on');
+          if(state[key].has(val)) state[key].delete(val); else state[key].add(val);
+        }
+        render();
+      });
+    });
+  });
+  document.querySelector('.chips[data-group="database"] .chip[data-value="none"]').classList.add('on');
+  document.querySelector('.chips[data-group="license"] .chip[data-value="none"]').classList.add('on');
+
+  const pname = document.getElementById('pname');
+  const treeOut = document.getElementById('treeOut');
+  const cmdOut = document.getElementById('cmdOut');
+  const fileCount = document.getElementById('fileCount');
+  const actionNote = document.getElementById('actionNote');
+  const toast = document.getElementById('toast');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  function slug(name){
+    return (name.trim() || 'my-project').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'my-project';
+  }
+  function has(group, val){ return state[group].has(val); }
+  function hasFrontend(){ return state.frontend.size > 0; }
+  function hasBackend(){ return state.backend.size > 0; }
+  function hasDb(){ return state.database !== 'none'; }
+
+  // ---------- DB helpers ----------
+  function dbEnvLine(root){
+    switch(state.database){
+      case 'postgresql': return 'DATABASE_URL=postgresql://user:password@localhost:5432/'+root;
+      case 'mysql': return 'DATABASE_URL=mysql://user:password@localhost:3306/'+root;
+      case 'mongodb': return 'DATABASE_URL=mongodb://localhost:27017/'+root;
+      case 'sqlite': return 'DATABASE_URL=sqlite:///./'+root+'.db';
+      case 'firebase': return 'FIREBASE_PROJECT_ID=your-firebase-project-id';
+      default: return '# no database selected';
+    }
+  }
+
+  // ---------- Backend registry ----------
+  const BACKEND_DEFS = {
+    'py-fastapi': {
+      dir: 'backend-python-fastapi', lang:'python',
+      files: (root) => ({
+        'requirements.txt': 'fastapi>=0.110.0\nuvicorn[standard]>=0.29.0\n' + pyDbDep(),
+        'app/main.py': [
+          'from fastapi import FastAPI', '',
+          'app = FastAPI(title="'+root+'")', '',
+          '@app.get("/")', 'def root():',
+          '    return {"status": "ok", "project": "'+root+'"}', ''
+        ].join('\n'),
+        '.env.example': dbEnvLine(root) + '\nPORT=8000\n'
+      }),
+      setup: (dir) => ['cd '+dir+' && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt && cd ..'],
+      run: (dir) => 'cd '+dir+' && uvicorn app.main:app --reload'
+    },
+    'py-django': {
+      dir: 'backend-python-django', lang:'python',
+      files: (root) => ({
+        'requirements.txt': 'django>=5.0.0\ngunicorn>=21.2.0\n' + pyDbDep(),
+        'manage.py': [
+          '#!/usr/bin/env python', '"""Django command-line utility."""', 'import os', 'import sys', '',
+          'def main():', '    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")',
+          '    from django.core.management import execute_from_command_line',
+          '    execute_from_command_line(sys.argv)', '',
+          'if __name__ == "__main__":', '    main()', ''
+        ].join('\n'),
+        'config/settings.py': '# Minimal starter settings\nSECRET_KEY = "change-me"\nDEBUG = True\nALLOWED_HOSTS = []\nROOT_URLCONF = "config.urls"\n',
+        '.env.example': dbEnvLine(root) + '\nPORT=8000\n'
+      }),
+      setup: (dir) => ['cd '+dir+' && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python manage.py migrate && cd ..'],
+      run: (dir) => 'cd '+dir+' && python manage.py runserver'
+    },
+    'py-flask': {
+      dir: 'backend-python-flask', lang:'python',
+      files: (root) => ({
+        'requirements.txt': 'flask>=3.0.0\n' + pyDbDep(),
+        'app.py': [
+          'from flask import Flask', '', 'app = Flask(__name__)', '',
+          '@app.get("/")', 'def root():', '    return {"status": "ok", "project": "'+root+'"}', '',
+          'if __name__ == "__main__":', '    app.run(debug=True)', ''
+        ].join('\n'),
+        '.env.example': dbEnvLine(root) + '\nPORT=5000\n'
+      }),
+      setup: (dir) => ['cd '+dir+' && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt && cd ..'],
+      run: (dir) => 'cd '+dir+' && python app.py'
+    },
+    'node-express': {
+      dir: 'backend-node-express', lang:'node',
+      files: (root) => ({
+        'package.json': JSON.stringify({ name: slug(root)+'-express', version:'0.1.0', private:true,
+          scripts:{ start:'node src/index.js', dev:'node --watch src/index.js' },
+          dependencies: Object.assign({ express:'^4.19.0' }, nodeDbDep()) }, null, 2) + '\n',
+        'src/index.js': [
+          'const express = require("express");', 'const app = express();',
+          'const PORT = process.env.PORT || 8000;', '',
+          'app.get("/", (req, res) => {', '  res.json({ status: "ok", project: "'+root+'" });', '});', '',
+          'app.listen(PORT, () => console.log(`Server running on port ${PORT}`));', ''
+        ].join('\n'),
+        '.env.example': dbEnvLine(root) + '\nPORT=8000\n'
+      }),
+      setup: (dir) => ['cd '+dir+' && npm install && cd ..'],
+      run: (dir) => 'cd '+dir+' && npm run dev'
+    },
+    'node-nest': {
+      dir: 'backend-node-nest', lang:'node',
+      files: (root) => ({
+        'package.json': JSON.stringify({ name: slug(root)+'-nest', version:'0.1.0', private:true,
+          scripts:{ start:'ts-node src/main.ts' },
+          dependencies: Object.assign({ '@nestjs/core':'^10.3.0', '@nestjs/common':'^10.3.0', 'reflect-metadata':'^0.2.1' }, nodeDbDep()),
+          devDependencies:{ 'ts-node':'^10.9.0', typescript:'^5.4.0' } }, null, 2) + '\n',
+        'src/main.ts': [
+          'import { NestFactory } from "@nestjs/core";',
+          'import { Module, Controller, Get } from "@nestjs/common";', '',
+          '@Controller()', 'class AppController {', '  @Get()', '  root() {',
+          '    return { status: "ok", project: "'+root+'" };', '  }', '}', '',
+          '@Module({ controllers: [AppController] })', 'class AppModule {}', '',
+          'async function bootstrap() {', '  const app = await NestFactory.create(AppModule);',
+          '  await app.listen(8000);', '}', 'bootstrap();', ''
+        ].join('\n'),
+        '.env.example': dbEnvLine(root) + '\nPORT=8000\n'
+      }),
+      setup: (dir) => ['cd '+dir+' && npm install && cd ..'],
+      run: (dir) => 'cd '+dir+' && npm run start'
+    },
+    'go': {
+      dir: 'backend-go', lang:'go',
+      files: (root) => ({
+        'go.mod': 'module '+slug(root)+'\n\ngo 1.22\n',
+        'main.go': [
+          'package main', '', 'import (', '\t"encoding/json"', '\t"log"', '\t"net/http"', ')', '',
+          'func main() {', '\thttp.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {',
+          '\t\tjson.NewEncoder(w).Encode(map[string]string{"status": "ok", "project": "'+root+'"})',
+          '\t})', '\tlog.Println("Server running on port 8000")',
+          '\tlog.Fatal(http.ListenAndServe(":8000", nil))', '}', ''
+        ].join('\n'),
+        '.env.example': dbEnvLine(root) + '\nPORT=8000\n'
+      }),
+      setup: (dir) => ['cd '+dir+' && go mod tidy && cd ..'],
+      run: (dir) => 'cd '+dir+' && go run main.go'
+    },
+    'java-spring': {
+      dir: 'backend-java-spring', lang:'java',
+      files: (root) => ({
+        'pom.xml': [
+          '<?xml version="1.0" encoding="UTF-8"?>',
+          '<project xmlns="http://maven.apache.org/POM/4.0.0">',
+          '  <modelVersion>4.0.0</modelVersion>',
+          '  <groupId>com.'+slug(root).replace(/-/g,'')+'</groupId>',
+          '  <artifactId>'+slug(root)+'-service</artifactId>',
+          '  <version>0.1.0</version>',
+          '  <parent>',
+          '    <groupId>org.springframework.boot</groupId>',
+          '    <artifactId>spring-boot-starter-parent</artifactId>',
+          '    <version>3.2.0</version>',
+          '  </parent>',
+          '  <dependencies>',
+          '    <dependency>',
+          '      <groupId>org.springframework.boot</groupId>',
+          '      <artifactId>spring-boot-starter-web</artifactId>',
+          '    </dependency>',
+          '  </dependencies>',
+          '</project>', ''
+        ].join('\n'),
+        'src/main/java/com/app/Application.java': [
+          'package com.app;', '',
+          'import org.springframework.boot.SpringApplication;',
+          'import org.springframework.boot.autoconfigure.SpringBootApplication;',
+          'import org.springframework.web.bind.annotation.GetMapping;',
+          'import org.springframework.web.bind.annotation.RestController;', '',
+          '@SpringBootApplication', '@RestController', 'public class Application {', '',
+          '    @GetMapping("/")', '    public String root() {', '        return "{\\"status\\":\\"ok\\",\\"project\\":\\"'+root+'\\"}";', '    }', '',
+          '    public static void main(String[] args) {', '        SpringApplication.run(Application.class, args);', '    }', '}', ''
+        ].join('\n'),
+        '.env.example': dbEnvLine(root) + '\nSERVER_PORT=8080\n'
+      }),
+      setup: (dir) => ['cd '+dir+' && mvn install && cd ..'],
+      run: (dir) => 'cd '+dir+' && mvn spring-boot:run'
+    },
+    'csharp-dotnet': {
+      dir: 'backend-csharp-dotnet', lang:'csharp',
+      files: (root) => ({
+        [slug(root).replace(/-/g,'')+'.csproj']: [
+          '<Project Sdk="Microsoft.NET.Sdk.Web">', '  <PropertyGroup>',
+          '    <TargetFramework>net8.0</TargetFramework>', '    <Nullable>enable</Nullable>',
+          '  </PropertyGroup>', '</Project>', ''
+        ].join('\n'),
+        'Program.cs': [
+          'var builder = WebApplication.CreateBuilder(args);', 'var app = builder.Build();', '',
+          'app.MapGet("/", () => new { status = "ok", project = "'+root+'" });', '',
+          'app.Run();', ''
+        ].join('\n'),
+        '.env.example': dbEnvLine(root) + '\nASPNETCORE_URLS=http://localhost:5080\n'
+      }),
+      setup: (dir) => ['cd '+dir+' && dotnet restore && cd ..'],
+      run: (dir) => 'cd '+dir+' && dotnet run'
+    },
+    'php-laravel': {
+      dir: 'backend-php-laravel', lang:'php',
+      files: (root) => ({
+        'composer.json': JSON.stringify({ name: slug(root)+'/laravel-app', require: { php: '^8.2', 'laravel/framework': '^11.0' } }, null, 2) + '\n',
+        'routes/web.php': [
+          '<?php', '', "Route::get('/', function () {",
+          '    return response()->json(["status" => "ok", "project" => "'+root+'"]);', '});', ''
+        ].join('\n'),
+        '.env.example': dbEnvLine(root) + '\nAPP_PORT=8000\n'
+      }),
+      setup: (dir) => ['cd '+dir+' && composer install && cd ..'],
+      run: (dir) => 'cd '+dir+' && php artisan serve'
+    },
+    'ruby-rails': {
+      dir: 'backend-ruby-rails', lang:'ruby',
+      files: (root) => ({
+        'Gemfile': 'source "https://rubygems.org"\n\ngem "rails", "~> 7.1"\n' + rubyDbGem(),
+        'config/routes.rb': [
+          'Rails.application.routes.draw do',
+          "  get '/', to: proc { [200, {}, [{ status: 'ok', project: '"+root+"' }.to_json]] }",
+          'end', ''
+        ].join('\n'),
+        '.env.example': dbEnvLine(root) + '\nPORT=3000\n'
+      }),
+      setup: (dir) => ['cd '+dir+' && bundle install && cd ..'],
+      run: (dir) => 'cd '+dir+' && rails server'
+    },
+    'rust-actix': {
+      dir: 'backend-rust-actix', lang:'rust',
+      files: (root) => ({
+        'Cargo.toml': [
+          '[package]', 'name = "'+slug(root)+'-service"', 'version = "0.1.0"', 'edition = "2021"', '',
+          '[dependencies]', 'actix-web = "4"', 'serde_json = "1"', ''
+        ].join('\n'),
+        'src/main.rs': [
+          'use actix_web::{get, App, HttpServer, HttpResponse};', '',
+          '#[get("/")]', 'async fn root() -> HttpResponse {',
+          '    HttpResponse::Ok().json(serde_json::json!({ "status": "ok", "project": "'+root+'" }))', '}', '',
+          '#[actix_web::main]', 'async fn main() -> std::io::Result<()> {',
+          '    HttpServer::new(|| App::new().service(root))',
+          '        .bind(("127.0.0.1", 8000))?', '        .run()', '        .await', '}', ''
+        ].join('\n'),
+        '.env.example': dbEnvLine(root) + '\nPORT=8000\n'
+      }),
+      setup: (dir) => ['cd '+dir+' && cargo build && cd ..'],
+      run: (dir) => 'cd '+dir+' && cargo run'
+    },
+    'kotlin-ktor': {
+      dir: 'backend-kotlin-ktor', lang:'kotlin',
+      files: (root) => ({
+        'build.gradle.kts': [
+          'plugins {', '    kotlin("jvm") version "1.9.22"', '    id("io.ktor.plugin") version "2.3.7"', '}', '',
+          'dependencies {', '    implementation("io.ktor:ktor-server-core-jvm")',
+          '    implementation("io.ktor:ktor-server-netty-jvm")', '}', ''
+        ].join('\n'),
+        'src/main/kotlin/Application.kt': [
+          'import io.ktor.server.application.*', 'import io.ktor.server.engine.*',
+          'import io.ktor.server.netty.*', 'import io.ktor.server.response.*',
+          'import io.ktor.server.routing.*', '',
+          'fun main() {', '    embeddedServer(Netty, port = 8080) {', '        routing {',
+          '            get("/") { call.respondText("""{"status":"ok","project":"'+root+'"}""") }',
+          '        }', '    }.start(wait = true)', '}', ''
+        ].join('\n'),
+        '.env.example': dbEnvLine(root) + '\nPORT=8080\n'
+      }),
+      setup: (dir) => ['cd '+dir+' && ./gradlew build && cd ..'],
+      run: (dir) => 'cd '+dir+' && ./gradlew run'
+    }
+  };
+
+  function pyDbDep(){
+    switch(state.database){
+      case 'postgresql': return 'psycopg2-binary>=2.9.0\n';
+      case 'mysql': return 'mysqlclient>=2.2.0\n';
+      case 'mongodb': return 'pymongo>=4.6.0\n';
+      case 'firebase': return 'firebase-admin>=6.4.0\n';
+      default: return '';
+    }
+  }
+  function nodeDbDep(){
+    switch(state.database){
+      case 'postgresql': return { pg: '^8.11.0' };
+      case 'mysql': return { mysql2: '^3.9.0' };
+      case 'mongodb': return { mongoose: '^8.2.0' };
+      default: return {};
+    }
+  }
+  function rubyDbGem(){
+    switch(state.database){
+      case 'postgresql': return 'gem "pg", "~> 1.5"\n';
+      case 'mysql': return 'gem "mysql2", "~> 0.5"\n';
+      case 'sqlite': return 'gem "sqlite3", "~> 1.7"\n';
+      default: return '';
+    }
+  }
+
+  function buildBackends(root, files){
+    state.backend.forEach(id => {
+      const def = BACKEND_DEFS[id];
+      if(!def) return;
+      const generated = def.files(root);
+      Object.entries(generated).forEach(([p, content]) => {
+        files[def.dir + '/' + p] = content;
+      });
+    });
+  }
+
+  // ---------- Frontend (kept + extended) ----------
+  function frontendDeps(){
+    const deps = {}, devDeps = { vite: '^5.0.0' };
+    if(has('frontend','react') || has('frontend','nextjs')){ deps['react']='^18.2.0'; deps['react-dom']='^18.2.0'; }
+    if(has('frontend','nextjs')) deps['next']='^14.0.0';
+    if(has('frontend','vue')) deps['vue']='^3.4.0';
+    if(has('frontend','svelte')) deps['svelte']='^4.2.0';
+    if(has('frontend','angular')) deps['@angular/core']='^17.0.0';
+    if(has('frontend','solid')) deps['solid-js']='^1.8.0';
+    if(has('frontend','typescript')) devDeps['typescript']='^5.4.0';
+    if(has('frontend','sass')) devDeps['sass']='^1.71.0';
+    if(has('frontend','tailwind')){ devDeps['tailwindcss']='^3.4.0'; devDeps['postcss']='^8.4.0'; devDeps['autoprefixer']='^10.4.0'; }
+    if(has('quality','jest')) devDeps['jest']='^29.7.0';
+    if(has('quality','vitest')) devDeps['vitest']='^1.4.0';
+    if(has('quality','eslint-prettier')){ devDeps['eslint']='^8.57.0'; devDeps['prettier']='^3.2.0'; }
+    return { deps, devDeps };
+  }
+  function buildFrontendPackageJson(root){
+    const { deps, devDeps } = frontendDeps();
+    const scripts = { dev:'vite', build:'vite build', preview:'vite preview' };
+    if(has('quality','jest')) scripts.test = 'jest';
+    if(has('quality','vitest')) scripts.test = 'vitest';
+    return JSON.stringify({ name: slug(root)+'-frontend', version:'0.1.0', private:true, scripts, dependencies:deps, devDependencies:devDeps }, null, 2) + '\n';
+  }
+  function buildFrontendIndexHtml(root, ext){
+    return ['<!DOCTYPE html>','<html lang="en">','<head><meta charset="UTF-8"><title>'+root+'</title></head>','<body>','  <div id="root"></div>','  <script type="module" src="/src/main.'+ext+'"></'+'script>','</body>','</html>',''].join('\n');
+  }
+  function buildReactApp(root){
+    const isTs = has('frontend','typescript');
+    return ['export default function App()'+(isTs?': JSX.Element':'')+' {','  return (','    <main>','      <h1>'+root+'</h1>','      <p>Frontend scaffold generated by Stack Sprinkles.</p>','    </main>','  );','}',''].join('\n');
+  }
+  function buildVueApp(root){
+    return ['<template>','  <main>','    <h1>'+root+'</h1>','    <p>Frontend scaffold generated by Stack Sprinkles.</p>','  </main>','</template>','','<script setup>','</'+'script>',''].join('\n');
+  }
+  function buildSvelteApp(root){
+    return ['<main>','  <h1>'+root+'</h1>','  <p>Frontend scaffold generated by Stack Sprinkles.</p>','</main>',''].join('\n');
+  }
+  function buildSolidApp(root){
+    return ['export default function App() {','  return (','    <main>','      <h1>'+root+'</h1>','      <p>Frontend scaffold generated by Stack Sprinkles.</p>','    </main>','  );','}',''].join('\n');
+  }
+  function buildAngularNote(root){
+    return ['# Angular setup','','Angular projects are best scaffolded with the official CLI:','','```','npm install -g @angular/cli','ng new '+slug(root)+' --directory .','```',''].join('\n');
+  }
+  function buildTailwindConfig(){
+    return ['/** @type {import(\'tailwindcss\').Config} */','module.exports = {','  content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx,vue,svelte}"],','  theme: { extend: {} },','  plugins: []','};',''].join('\n');
+  }
+  function buildFrontendTest(tool){
+    if(tool === 'vitest'){
+      return ['import { describe, it, expect } from "vitest";','','describe("App", () => {','  it("renders", () => {','    expect(true).toBe(true);','  });','});',''].join('\n');
+    }
+    return ['describe("App", () => {','  it("renders", () => {','    expect(true).toBe(true);','  });','});',''].join('\n');
+  }
+
+  function buildFrontend(root, files){
+    if(!hasFrontend()) return;
+    const ext = has('frontend','typescript') ? 'tsx' : 'jsx';
+    files['frontend/package.json'] = buildFrontendPackageJson(root);
+    files['frontend/index.html'] = buildFrontendIndexHtml(root, ext);
+    if(has('frontend','vue') && !has('frontend','react') && !has('frontend','nextjs') && !has('frontend','svelte') && !has('frontend','solid')){
+      files['frontend/src/App.vue'] = buildVueApp(root);
+    } else if(has('frontend','svelte') && !has('frontend','react') && !has('frontend','nextjs')){
+      files['frontend/src/App.svelte'] = buildSvelteApp(root);
+    } else if(has('frontend','solid') && !has('frontend','react') && !has('frontend','nextjs')){
+      files['frontend/src/App.' + ext] = buildSolidApp(root);
+    } else if(has('frontend','angular')){
+      files['frontend/ANGULAR.md'] = buildAngularNote(root);
+    } else {
+      files['frontend/src/App.' + ext] = buildReactApp(root);
+    }
+    if(has('frontend','tailwind')) files['frontend/tailwind.config.js'] = buildTailwindConfig();
+    if(has('quality','jest') || has('quality','vitest')){
+      const testTool = has('quality','vitest') ? 'vitest' : 'jest';
+      files['frontend/src/App.test.' + (has('frontend','typescript') ? 'ts' : 'js')] = buildFrontendTest(testTool);
+    }
+  }
+
+  // ---------- Root-level files ----------
+  function licenseName(){ return { mit:'MIT', apache2:'Apache 2.0', gpl3:'GPL v3', none:'None' }[state.license]; }
+
+  function buildLicense(){
+    const year = new Date().getFullYear(); const owner = 'Your Name';
+    if(state.license === 'mit'){
+      return ['MIT License','','Copyright (c) '+year+' '+owner,'',
+        'Permission is hereby granted, free of charge, to any person obtaining a copy',
+        'of this software and associated documentation files (the "Software"), to deal',
+        'in the Software without restriction, including without limitation the rights',
+        'to use, copy, modify, merge, publish, distribute, sublicense, and/or sell',
+        'copies of the Software, and to permit persons to whom the Software is',
+        'furnished to do so, subject to the following conditions:','',
+        'The above copyright notice and this permission notice shall be included in all',
+        'copies or substantial portions of the Software.','',
+        'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR',
+        'IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,',
+        'FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.',''].join('\n');
+    }
+    if(state.license === 'apache2'){
+      return ['Apache License 2.0','','Copyright (c) '+year+' '+owner,'',
+        'Licensed under the Apache License, Version 2.0 (the "License");',
+        'you may not use this file except in compliance with the License.',
+        'You may obtain a copy of the License at','',
+        '    https://www.apache.org/licenses/LICENSE-2.0','',
+        'Unless required by applicable law or agreed to in writing, software',
+        'distributed under the License is distributed on an "AS IS" BASIS,',
+        'WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND.',''].join('\n');
+    }
+    if(state.license === 'gpl3'){
+      return ['GNU General Public License v3.0','','Copyright (c) '+year+' '+owner,'',
+        'This program is free software: you can redistribute it and/or modify',
+        'it under the terms of the GNU General Public License as published by',
+        'the Free Software Foundation, either version 3 of the License, or',
+        '(at your option) any later version.','',
+        'Full license text: https://www.gnu.org/licenses/gpl-3.0.en.html',''].join('\n');
+    }
+    return null;
+  }
+
+  function buildGitignore(){
+    return ['node_modules/','dist/','build/','.env','__pycache__/','*.pyc','.venv/','venv/','target/','bin/','obj/','vendor/','.DS_Store','*.log','*.db','.gradle/'].join('\n') + '\n';
+  }
+
+  function buildDockerCompose(root){
+    const services = [];
+    if(hasFrontend()) services.push(['  frontend:','    build: ./frontend','    ports:','      - "5173:5173"'].join('\n'));
+    state.backend.forEach(id => {
+      const def = BACKEND_DEFS[id];
+      services.push(['  '+id+':','    build: ./'+def.dir,'    env_file: '+def.dir+'/.env.example'].join('\n'));
+    });
+    if(state.database === 'postgresql') services.push(['  db:','    image: postgres:16','    environment:','      POSTGRES_DB: '+root,'      POSTGRES_USER: user','      POSTGRES_PASSWORD: password','    ports:','      - "5432:5432"'].join('\n'));
+    if(state.database === 'mysql') services.push(['  db:','    image: mysql:8','    environment:','      MYSQL_DATABASE: '+root,'      MYSQL_USER: user','      MYSQL_PASSWORD: password','      MYSQL_ROOT_PASSWORD: root','    ports:','      - "3306:3306"'].join('\n'));
+    if(state.database === 'mongodb') services.push(['  db:','    image: mongo:7','    ports:','      - "27017:27017"'].join('\n'));
+    if(has('devops','redis')) services.push(['  redis:','    image: redis:7','    ports:','      - "6379:6379"'].join('\n'));
+    return 'services:\n' + services.join('\n') + '\n';
+  }
+
+  function buildCiYml(){
+    return ['name: CI','on: [push, pull_request]','jobs:','  build:','    runs-on: ubuntu-latest','    steps:','      - uses: actions/checkout@v4','      - run: echo "Add per-language install/test/build steps here"',''].join('\n');
+  }
+  function buildEslintrc(){
+    return JSON.stringify({ extends: ["eslint:recommended"], env: { browser: true, node: true, es2022: true }, parserOptions: { ecmaVersion: "latest", sourceType: "module" } }, null, 2) + '\n';
+  }
+  function buildPrettierrc(){
+    return JSON.stringify({ semi: true, singleQuote: true, tabWidth: 2, printWidth: 100 }, null, 2) + '\n';
+  }
+  function buildVscodeWorkspace(root, files){
+    const folders = [{ path: '.' }];
+    return JSON.stringify({ folders, settings: { "files.exclude": { "**/.git": true } } }, null, 2) + '\n';
+  }
+
+  function buildSchemaSql(root){
+    if(state.database === 'mongodb') return '// MongoDB is schemaless — define models per backend/models instead.\n';
+    if(state.database === 'firebase') return '// Firebase is schemaless — define Firestore collections + security rules separately.\n';
+    if(state.database === 'none') return null;
+    return ['-- '+root+' schema','CREATE TABLE IF NOT EXISTS example (','  id SERIAL PRIMARY KEY,','  name VARCHAR(255) NOT NULL,','  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',');',''].join('\n');
+  }
+
+  function langTestFile(id, key, content){
+    const def = BACKEND_DEFS[id];
+    return { path: def.dir + '/' + key, content };
+  }
+
+  function buildBackendTests(files){
+    state.backend.forEach(id => {
+      const def = BACKEND_DEFS[id];
+      if(def.lang === 'python' && has('quality','pytest')){
+        files[def.dir + '/tests/test_main.py'] = 'def test_placeholder():\n    assert True\n';
+      }
+      if(def.lang === 'node' && has('quality','jest')){
+        files[def.dir + '/src/index.test.js'] = 'test("placeholder", () => {\n  expect(true).toBe(true);\n});\n';
+      }
+      if(def.lang === 'java' && has('quality','junit')){
+        files[def.dir + '/src/test/java/com/app/ApplicationTests.java'] =
+          'package com.app;\n\nimport org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.*;\n\nclass ApplicationTests {\n    @Test\n    void placeholder() {\n        assertTrue(true);\n    }\n}\n';
+      }
+      if(def.lang === 'csharp' && has('quality','xunit')){
+        files[def.dir + '/Tests/PlaceholderTests.cs'] =
+          'using Xunit;\n\npublic class PlaceholderTests {\n    [Fact]\n    public void Placeholder() {\n        Assert.True(true);\n    }\n}\n';
+      }
+      if(def.lang === 'php' && has('quality','phpunit')){
+        files[def.dir + '/tests/PlaceholderTest.php'] =
+          "<?php\nuse PHPUnit\\Framework\\TestCase;\n\nclass PlaceholderTest extends TestCase {\n    public function testPlaceholder() {\n        $this->assertTrue(true);\n    }\n}\n";
+      }
+      if(def.lang === 'ruby' && has('quality','rspec')){
+        files[def.dir + '/spec/placeholder_spec.rb'] =
+          "require 'spec_helper'\n\nRSpec.describe 'placeholder' do\n  it 'passes' do\n    expect(true).to eq(true)\n  end\nend\n";
+      }
+    });
+  }
+
+  function buildCommands(root){
+    const lines = [];
+    if(has('devops','git')) lines.push('git init');
+    if(hasFrontend() && !has('frontend','angular')) lines.push('cd frontend && npm install && cd ..');
+    if(has('frontend','angular')) lines.push('npm install -g @angular/cli && ng new ' + slug(root) + ' --directory frontend');
+
+    state.backend.forEach(id => {
+      const def = BACKEND_DEFS[id];
+      def.setup(def.dir).forEach(cmd => lines.push(cmd));
+    });
+
+    if(has('devops','docker')){
+      lines.push('docker compose up --build');
+    } else {
+      if(hasFrontend() && !has('frontend','angular')) lines.push('cd frontend && npm run dev');
+      state.backend.forEach(id => {
+        const def = BACKEND_DEFS[id];
+        lines.push(def.run(def.dir));
+      });
+    }
+    if(lines.length === 0) lines.push('# pick something from Frontend, Backend, or DevOps to see commands here');
+    return lines.join('\n');
+  }
+
+  function buildSetupScript(root){
+    return ['#!/usr/bin/env bash', 'set -e', '', '# Generated by Stack Sprinkles — runs every setup command in order.', '# Usage: chmod +x setup.sh && ./setup.sh', '', buildCommands(root), ''].join('\n');
+  }
+
+  function buildReadme(root){
+    const fe=[...state.frontend], be=[...state.backend].map(id => BACKEND_DEFS[id].dir), q=[...state.quality], d=[...state.devops];
+    const lines = [
+      '# ' + root.trim(), '',
+      'Auto-generated polyglot scaffold from Stack Sprinkles.', '',
+      '## Stack',
+      '- Frontend: ' + (fe.length ? fe.join(', ') : 'none'),
+      '- Backends: ' + (be.length ? be.join(', ') : 'none'),
+      '- Database: ' + state.database,
+      '- Testing & Quality: ' + (q.length ? q.join(', ') : 'none'),
+      '- DevOps & Tools: ' + (d.length ? d.join(', ') : 'none'),
+      '- License: ' + licenseName(), '',
+      '## Setup',
+      'Run every command below in one go:',
+      '```','chmod +x setup.sh && ./setup.sh','```',
+      'Or run them one by one:',
+      '```', buildCommands(root), '```', '',
+      '## Open in VS Code',
+      '```', 'code .', '```'
+    ];
+    return lines.join('\n') + '\n';
+  }
+
+  function buildPlan(){
+    const root = slug(pname.value);
+    const files = {};
+
+    files['README.md'] = buildReadme(pname.value);
+    files['.gitignore'] = buildGitignore();
+
+    const licenseFile = buildLicense();
+    if(licenseFile) files['LICENSE'] = licenseFile;
+
+    if(has('devops','docker')) files['docker-compose.yml'] = buildDockerCompose(root);
+    if(has('devops','github-actions')) files['.github/workflows/ci.yml'] = buildCiYml();
+    if(has('devops','vscode')) files[slug(pname.value) + '.code-workspace'] = buildVscodeWorkspace(root, files);
+    if(has('quality','eslint-prettier')){
+      files['.eslintrc.json'] = buildEslintrc();
+      files['.prettierrc'] = buildPrettierrc();
+    }
+
+    buildFrontend(pname.value, files);
+    buildBackends(pname.value, files);
+    buildBackendTests(files);
+
+    const schema = buildSchemaSql(root);
+    if(schema) files['database/schema.sql'] = schema;
+
+    files['setup.sh'] = buildSetupScript(pname.value);
+
+    return { root, files };
+  }
+
+  function render(){
+    const plan = buildPlan();
+    const paths = Object.keys(plan.files).sort();
+    fileCount.textContent = paths.length + ' file' + (paths.length === 1 ? '' : 's');
+
+    const treeRoot = {};
+    paths.forEach(p => {
+      const parts = p.split('/');
+      let node = treeRoot;
+      parts.forEach((part, i) => {
+        node[part] = node[part] || (i === parts.length - 1 ? null : {});
+        if(i < parts.length - 1) node = node[part];
+      });
+    });
+    function renderNode(node, prefix){
+      const keys = Object.keys(node).sort((a,b) => {
+        const aDir = node[a] !== null, bDir = node[b] !== null;
+        if(aDir !== bDir) return aDir ? -1 : 1;
+        return a.localeCompare(b);
+      });
+      let out = '';
+      keys.forEach((k,i) => {
+        const last = i === keys.length - 1;
+        const branch = last ? '└── ' : '├── ';
+        const isDir = node[k] !== null;
+        out += '<span class="dim">'+prefix+branch+'</span>' + (isDir ? '<span class="hi">'+k+'/</span>' : k) + '\n';
+        if(isDir) out += renderNode(node[k], prefix + (last ? '    ' : '│   '));
+      });
+      return out;
+    }
+    treeOut.innerHTML = '<span class="hi">' + plan.root + '/</span>\n' + renderNode(treeRoot, '');
+    cmdOut.textContent = buildCommands(pname.value);
+
+    const ready = hasFrontend() || hasBackend() || state.devops.size > 0;
+    downloadBtn.disabled = !ready;
+    actionNote.textContent = ready
+      ? paths.length + ' files will be generated inside "' + plan.root + '".'
+      : 'Pick at least one thing from Frontend, Backend, or DevOps to build your ZIP.';
+  }
+
+  pname.addEventListener('input', render);
+
+  document.getElementById('copyCmds').addEventListener('click', () => {
+    navigator.clipboard.writeText(cmdOut.textContent).then(() => showToast('commands copied ✓', false)).catch(() => showToast('could not copy', true));
+  });
+
+  function showToast(msg, isErr){
+    toast.textContent = msg;
+    toast.className = 'toast' + (isErr ? ' err' : '');
+    setTimeout(() => { toast.textContent = ''; }, 3500);
+  }
+
+  downloadBtn.addEventListener('click', async () => {
+    const plan = buildPlan();
+    downloadBtn.disabled = true;
+    const originalLabel = downloadBtn.textContent;
+    downloadBtn.textContent = 'Building ZIP…';
+    try {
+      const zip = new JSZip();
+      const folder = zip.folder(plan.root);
+      Object.entries(plan.files).forEach(([path, content]) => {
+        if(path === 'setup.sh'){
+          folder.file(path, content, { unixPermissions: '755' });
+        } else {
+          folder.file(path, content);
+        }
+      });
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const filename = plan.root + '.zip';
+
+      let saved = false;
+      try {
+        const downloads = await Promise.race([
+          window.claude && window.claude.use ? window.claude.use('downloads') : Promise.resolve(null),
+          new Promise(res => setTimeout(() => res(null), 4000))
+        ]);
+        if(downloads){
+          await downloads.save({ filename, data: blob });
+          saved = true;
+        }
+      } catch(capErr){
+        if(capErr && capErr.code === 'declined'){
+          showToast('download cancelled', true);
+          saved = true;
+        }
+      }
+
+      if(!saved){
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      }
+      showToast('ZIP ready ✓ — unzip it and run "code ." in VS Code', false);
+    } catch(e){
+      showToast('something went wrong', true);
+    } finally {
+      downloadBtn.disabled = !(hasFrontend() || hasBackend() || state.devops.size > 0);
+      downloadBtn.textContent = originalLabel;
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
